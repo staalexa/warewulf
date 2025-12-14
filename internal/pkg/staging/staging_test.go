@@ -94,7 +94,7 @@ func TestStagingIndex_Clear(t *testing.T) {
 
 	// Create and add multiple test files
 	for i := 0; i < 3; i++ {
-		testFile := filepath.Join(tmpDir, "test"+string(rune('0'+i))+".txt")
+		testFile := filepath.Join(tmpDir, fmt.Sprintf("test%d.txt", i))
 		err := os.WriteFile(testFile, []byte("test content"), 0644)
 		assert.NoError(t, err)
 		err = si.AddFile(testFile, "")

@@ -39,10 +39,11 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 
 	// Ensure it's a site overlay
 	if !ovl.IsSiteOverlay() {
-		ovl, err = ovl.CloneToSite()
+		siteOverlay, err := ovl.CloneToSite()
 		if err != nil {
 			return fmt.Errorf("failed to clone overlay to site: %w", err)
 		}
+		ovl = siteOverlay
 	}
 
 	// Export each staged file to the overlay

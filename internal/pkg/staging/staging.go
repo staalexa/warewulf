@@ -3,6 +3,7 @@ package staging
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -129,7 +130,7 @@ func (si *StagingIndex) AddFile(sourcePath, destPath string) error {
 	}
 	defer dstFile.Close()
 
-	_, err = dstFile.ReadFrom(srcFile)
+	_, err = io.Copy(dstFile, srcFile)
 	if err != nil {
 		return fmt.Errorf("failed to copy file to staging: %w", err)
 	}
