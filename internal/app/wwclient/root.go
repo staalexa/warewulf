@@ -20,6 +20,9 @@ import (
 	"github.com/opencontainers/selinux/go-selinux"
 	"github.com/spf13/cobra"
 	"github.com/talos-systems/go-smbios/smbios"
+	"github.com/warewulf/warewulf/internal/app/wwclient/add"
+	"github.com/warewulf/warewulf/internal/app/wwclient/export"
+	"github.com/warewulf/warewulf/internal/app/wwclient/status"
 	warewulfconf "github.com/warewulf/warewulf/internal/pkg/config"
 	"github.com/warewulf/warewulf/internal/pkg/pidfile"
 	"github.com/warewulf/warewulf/internal/pkg/version"
@@ -48,6 +51,10 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&PIDFile, "pidfile", "p", "/var/run/wwclient.pid", "PIDFile to use")
 	rootCmd.PersistentFlags().StringVar(&WarewulfConfArg, "warewulfconf", "", "Set the warewulf configuration file")
 
+	// Add subcommands for staging and exporting files
+	rootCmd.AddCommand(add.GetCommand())
+	rootCmd.AddCommand(export.GetCommand())
+	rootCmd.AddCommand(status.GetCommand())
 }
 
 // GetRootCommand returns the root cobra.Command for the application.
