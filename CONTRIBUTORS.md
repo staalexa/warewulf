@@ -49,3 +49,4 @@
 * Arian Cabrera [@acabrera86](https://github.com/acabrera86)
 * Dacian Reece-Stremtan <dacianstremtan@gmail.com> [@dacianstremtan](https://github.com/dacianstremtan)
 * Adrian Reber <areber@redhat.com>
+* Alexandros Stathakopoulos <alexandros.stathakopoulos@tum.de> [@staalexa](https://github.com/staalexa)
