@@ -335,7 +335,7 @@ func (overlay Overlay) ParseCommentVars(file string) (retMap map[string]string) 
 		return nil
 	}
 
-	re := regexp.MustCompile(`{{\s*/\*\s*(.*?):\s*(.*?)\s*\*/\s*}}`)
+	re := regexp.MustCompile(`{{-?\s*/\*\s*(.*?):\s*(.*?)\s*\*/\s*-?}}`)
 	matches := re.FindAllStringSubmatch(string(content), -1)
 	if len(matches) > 0 {
 		wwlog.Debug("matches: %v len(%d:%d)", matches, len(matches), len(matches[0]))
@@ -961,7 +961,7 @@ func BuildOverlayIndir(nodeData node.Node, allNodes []node.Node, overlayNames []
 		return fmt.Errorf("output must a be a directory: %s", outputDir)
 	}
 
-	if !util.ValidString(strings.Join(overlayNames, ""), "^[a-zA-Z0-9-._:]+$") {
+	if !util.ValidString("^[a-zA-Z0-9-._:]+$", strings.Join(overlayNames, "")) {
 		return fmt.Errorf("overlay names contains illegal characters: %v", overlayNames)
 	}
 

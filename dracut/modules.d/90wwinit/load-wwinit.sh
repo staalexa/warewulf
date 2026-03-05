@@ -1,5 +1,7 @@
 #!/bin/bash
 
+[ -z "${wwinit_root_device}" ] && return 0
+
 get_stage() {
     stage="${1}"
     info "warewulf: loading stage: ${stage}"
@@ -44,3 +46,11 @@ info "warewulf: mounting ${wwinit_root_device} at ${NEWROOT}"
 for stage in "image" "system" "runtime"; do
     get_stage "${stage}"
 done
+
+# Copy /warewulf/run from initramfs to NEWROOT
+# This preserves state files created by wwinit.d scripts (e.g., ignition marker)
+if [ -d /tmp/wwinit/warewulf/run ]; then
+    info "warewulf: preserving /warewulf/run to mounted root"
+    mkdir -p "${NEWROOT}/warewulf"
+    cp -a /tmp/wwinit/warewulf/run "${NEWROOT}/warewulf/"
+fi

@@ -4,7 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## v4.6.5, unreleased
+## v4.6.6, unreleased
+
+### Fixed
+
+- Remove requisite dependency between ignition disk target and ignition service. #2083
+- Return HTTP 409 status when creating an existing overlay
+- Allow whitespace to be trimmed for wwdoc comments. #2109
+- update go-chi to 5.2.5 to fix  CVE-2025-69725
+- Prevented profile `comment` field from being inherited by nodes. #2078
 
 ### Added
 
@@ -13,39 +21,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - systemd-networkd overlay with IPv6 support
 - `wwctl overlay info` lists the variables used by an overlay template
 - `wwclient overlay-diff capture` to compare a source tree with a baseline and emit deterministic file differences for overlay authoring.
+- New --partwipe flag for profile and node set
+- Updated arguments for `ValidString` to match `regexp.MatchString`
+- New `mig` overlay to configure NVIDIA MIG devices. #2102
+- Documented that booting a node twice fixes broken partition tables
+
+## v4.6.5, 2026-01-12
+
+### Added
+
+- New `wwclient.aarch64` overlay provides an aarch64 wwclient executable. #2068
+- New `wwclient.x86_64` overlay provides an x86_64 wwclient executable. #2068
+- New `wwctl overlay info` command lists variables used by an overlay template. #2060
+- New Vagrant/Libvirt basic test/dev environment. #2081, #2003
+- New `bit-rate` IPMI tag. #2045
+- New `prefixlen6` parameter in `warewulf.conf`. #2068
+- New `cloned-mac-address` network device tag for `NetworkManager` overlay. #2017
+- New `range6 start` and `range6 end` in `warewulf.conf:dhcp`. #2068
+- New `Gateway6` network device field. #2068
+- New `systemd-networkd` overlay. #2068
 
 ### Changed
 
-- Renamed debian.interfaces overlay to ifupdown
-- Change the DHCP server package used on openeuler 24.03 to dnsmasq
-- Added configurable Serial over LAN speed via IPMI `bit-rate` tag in `50-ipmi` template
-- Manage SELinux context of TFTP directory. #1997
-- Dynamically write `$tftpdir/warewulf/grub.cfg` to the configured value from `warewulf.conf`
-- Absolute paths specified with `{{ file }}` in an overlay now write to that absolute path.
-- Use opencontainers/selinux to manage SELinux in wwclient.
-- Replace unused/unneeded IPv6net with IpCIDR6 and NetworkCIDR6 to align with IPv4
-- Improved IPv6 support
-  - Add PrefixLen6 for prefix length, Gateway6, and IPv6 DHCP range
-  - IPv6 support for Dnsmasq and NetworkManager
-  - Rename Netdev ip6addr to ipaddr6 for consistency
-  - Set `addr-gen-mode=eui64`
-- Set dnsmasq to listen to the Warewulf interface to prevent to binding to localhost:53
-- Added Ipv6 support to `/etc/hosts` on host and nodes.
-- Added IPv6 support to wwclient
+- Renamed `debian.interfaces` overlay to `ifupdown`. #2011
+- Changed the openEuler 24.03 RPM package to use dnsmasq. #2030
+- Enhanced `wwctl configure tftp` to manage the SELinux context of TFTP directory. #1997
+- Enhanced overlay templates to support absolute paths with `{{ file }}`. #2055
+- Refactored `wwclient` to use opencontainers/selinux to manage SELinux. #2042
+- Renamed network device `ip6addr` to `ipaddr6`. #2068
+- Limited Warewulf server dnsmasq to the Warewulf server interface. #2068
+- Refactored `ignition` overlay systemd templates for clarity. #2077
+- Enhanced `hosts` overlay with IPv6 support. #2068
+- Enhanced dnsmasq and `/etc/hosts` server configuration with IPv6 support. #2068
+- Enhanced `wwclient` with IPv6 support. #2068
 
 ### Removed
 
-- Remove unused Netdev `Prefix` field.
+- Remove unused Netdev `Prefix` field. #2068
+- Remove unused `IPv6net` from host configuration. #2068
 
 ### Fixed
 
 - Fix "address already in use" in `wwclient` when `secure: true`. #2009
-- Use device names in netplan bonds. #2013
-- Fix ImageDelete API not returning error when checking if image is used by nodes/profiles
+- Fix `netplan` overlay to use device names bonds. #2013
+- Fix ImageDelete API not returning error when checking if image is used by nodes/profiles. #1705
+- Fix warewulf-dracut to not run the wwinit module if root is not set to `root=wwclient*`. #2066
+- Fix `wwctl image import --update` #2073
+- Fix filesystem overwrite/force behavior in `mkfs` overlay. #2028
+- Prevent ignition from running twice in a provision-to-disk configuration. #1981
+- Remove `%elif` from `warewulf.spec.in` to resolve a build break for openSUSE 15.x. #2082
+- Fixed IPv6 support in `NetworkManager` overlay. #2068
+- Write `$tftpdir/warewulf/grub.cfg` to `tftproot` as configured in `warewulf.conf`. #2055
+- Automatically create a GPT label when `sfdisk` overlay wipes disks. #2025
+- Fix configuration of MTU on bonds with `NetworkManager`. #2059
 
 ### Dependencies
 
-- Updated github.com/ulikunitz/xz to 0.5.14 (CVE-2025-58058) #2007
+- Update github.com/ulikunitz/xz to 0.5.14 (CVE-2025-58058) #2007
+- Update github.com/opencontainers/selinux to v1.13.1 (CVE-2025-52881) #2082
 
 ## v4.6.4, 2025-09-05
 
@@ -139,7 +172,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Removed
 
 - Removed the gRPC API servers and client. #1876
-- Removed ``wwctl node import --csv``. #1862
+- Removed `wwctl node import --csv`. #1862
 
 ## v4.6.1, 2025-04-04
 
@@ -148,7 +181,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Added `wwctl overlay import --overwrite` to overwrite existing overlay file.
 - wwclient uses `WW_IPADDR`, if set, to contact the Warewulf server. #1788
 - Add `wwctl node import --yes` to assume yes to confirmations.
-- Set an IPMI tag ``vlan`` to configure the vlan during ``ipmiwrite``. #1031
+- Set an IPMI tag `vlan` to configure the vlan during `ipmiwrite`. #1031
 - Added net.ifnames=1 to default kernel argument list. #1820
 - Add a new OpenAPI v3 REST API to warewulfd at /api. #1588
 - New sos plugin in `warewulf-sos` subpackage. #1822
@@ -511,7 +544,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Fix dhcpd.conf static template to include next-server and dhcp-range #1536
 - Fix panic when adding tag with existing netdev #1546
 
-
 ## v4.5.7, 2024-09-11
 
 ### Added
@@ -542,6 +574,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `wwctl conatiner list --kernel` shows the kernel detected for each container. #1283
 - `wwctl container list --size` shows the uncompressed size of each container. `--compressed` shows the compressed size, and `--chroot` shows the size of the container source on the server. #954, #1117
 - Add a logrotate config for `warewulfd.log`. #1311
+
 ### Changed
 
 - Refactor URL handling in wwclient to consistently escape arguments.
@@ -636,7 +669,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 
 - Document warewulf.conf:paths. #635
-- New "Overlay" template variable contains the name of the overlay being built. #1052 
+- New "Overlay" template variable contains the name of the overlay being built. #1052
 - Documented HTTP proxy environment variables for `wwctl container import`. #1214
 
 ### Changed

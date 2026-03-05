@@ -54,15 +54,15 @@ but specifying it is recommended as Ignition may fail without it. Partition
 sizes should also be set (specified in MiB), except for the last partition: if
 no size is given, the maximum available size is used. Each partition has the
 switches ``should_exist`` and ``wipe_partition_entry`` which control the
-partition creation process. When omitting a partition number the
-`wipe_partition_entry` should be true, as this allows ignition to replace the
-existing partition.
+partition creation process (via the ``--partcreate`` and ``--partwipe`` flags).
+When omitting a partition number the `wipe_partition_entry` should be true, as
+this allows ignition to replace the existing partition.
 
 .. code-block:: shell
 
    wwctl node set n1 \
      --diskname /dev/vda --diskwipe \
-     --partname scratch --partcreate --partnumber 1
+     --partname scratch --partcreate --partwipe --partnumber 1
 
 File systems
 ============
@@ -260,3 +260,13 @@ parameter.
 .. code-block:: shell
 
    wwctl node set wwnode1 --root /dev/disk/by-partlabel/rootfs
+
+
+Known Problems
+--------------
+
+If the partition table on the disk isn't properly readable the command ``sgdisk
+--zap-all`` (which is used by Ignition to wipe the partition table) returns with
+code ``2``. This is interpreted by Ignition < ``2.16.2`` as an error, and no
+partitions or filesystems are created. Since the partition table is still wiped,
+partitioning and formatting should succeed on the next boot.
