@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/warewulf/warewulf/internal/pkg/overlaydiff"
 )
 
 func TestStartStopCommand_TableOutput(t *testing.T) {
@@ -92,15 +93,18 @@ func TestStartStopCommand_JSONOutput(t *testing.T) {
 		return
 	}
 
-	assert.Contains(t, stopOut.String(), "\"change\": \"modified\"")
-	assert.Contains(t, stopOut.String(), "\"path\": \"/new.txt\"")
 	assert.NotContains(t, stopOut.String(), "Decision summary:")
 
-	var payload []map[string]interface{}
+	var payload []overlaydiff.Change
 	if !assert.NoError(t, json.Unmarshal(stopOut.Bytes(), &payload)) {
 		return
 	}
-	assert.NotEmpty(t, payload)
+	if !assert.NotEmpty(t, payload) {
+		return
+	}
+
+	assert.Equal(t, overlaydiff.ChangeModified, payload[0].Change)
+	assert.Equal(t, "/new.txt", payload[0].Path)
 
 	assert.Contains(t, stopErr.String(), "Decision summary:")
 }
