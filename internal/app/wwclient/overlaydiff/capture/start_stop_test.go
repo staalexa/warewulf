@@ -2,6 +2,7 @@ package capture
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,8 +84,9 @@ func TestStartStopCommand_JSONOutput(t *testing.T) {
 	stopCmd := GetStopCommand()
 	stopCmd.SetArgs([]string{"--source", sourceDir, "--state-file", stateFile, "--format", "json"})
 	stopOut := new(bytes.Buffer)
+	stopErr := new(bytes.Buffer)
 	stopCmd.SetOut(stopOut)
-	stopCmd.SetErr(new(bytes.Buffer))
+	stopCmd.SetErr(stopErr)
 
 	if !assert.NoError(t, stopCmd.Execute()) {
 		return
@@ -92,6 +94,15 @@ func TestStartStopCommand_JSONOutput(t *testing.T) {
 
 	assert.Contains(t, stopOut.String(), "\"change\": \"modified\"")
 	assert.Contains(t, stopOut.String(), "\"path\": \"/new.txt\"")
+	assert.NotContains(t, stopOut.String(), "Decision summary:")
+
+	var payload []map[string]interface{}
+	if !assert.NoError(t, json.Unmarshal(stopOut.Bytes(), &payload)) {
+		return
+	}
+	assert.NotEmpty(t, payload)
+
+	assert.Contains(t, stopErr.String(), "Decision summary:")
 }
 
 func TestStopCommand_InteractivePersistsDecision(t *testing.T) {

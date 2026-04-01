@@ -57,6 +57,11 @@ func runStop(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid format %q: expected table or json", stopFormat)
 	}
 
+	textOut := cmd.OutOrStdout()
+	if format == "json" {
+		textOut = cmd.ErrOrStderr()
+	}
+
 	onlyFilters, err := overlaydiff.ParseChangeTypes(stopOnly)
 	if err != nil {
 		return err
@@ -102,9 +107,9 @@ func runStop(cmd *cobra.Command, args []string) error {
 	}
 
 	if stopInteractive {
-		if err := runInteractiveSelection(cmd.InOrStdin(), cmd.OutOrStdout(), changes, &snapshot, stateFile); err != nil {
+		if err := runInteractiveSelection(cmd.InOrStdin(), textOut, changes, &snapshot, stateFile); err != nil {
 			if errors.Is(err, errInteractiveCancelled) {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Cancelled. Decisions were saved and can be resumed later.")
+				_, _ = fmt.Fprintln(textOut, "Cancelled. Decisions were saved and can be resumed later.")
 				return err
 			}
 			return err
@@ -123,7 +128,7 @@ func runStop(cmd *cobra.Command, args []string) error {
 	}
 
 	selected, skipped, templated, unset := summarizeDecisions(changes, snapshot.Decisions)
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Decision summary: selected=%d skipped=%d templated=%d unset=%d\n", selected, skipped, templated, unset)
+	_, _ = fmt.Fprintf(textOut, "Decision summary: selected=%d skipped=%d templated=%d unset=%d\n", selected, skipped, templated, unset)
 
 	if stopExport || strings.TrimSpace(stopExportDir) != "" {
 		exportDir := strings.TrimSpace(stopExportDir)
@@ -135,7 +140,7 @@ func runStop(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Exported %d selected entries to %s\n", exported, exportDir)
+		_, _ = fmt.Fprintf(textOut, "Exported %d selected entries to %s\n", exported, exportDir)
 	}
 
 	return nil
