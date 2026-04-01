@@ -245,8 +245,13 @@ func prepareExportDir(custom string) (string, error) {
 	if !errors.Is(err, os.ErrNotExist) {
 		return "", fmt.Errorf("failed to inspect export directory %s: %w", exportDir, err)
 	}
-	if err := os.MkdirAll(exportDir, 0o700); err != nil {
-		return "", fmt.Errorf("failed to create export directory %s: %w", exportDir, err)
+
+	absoluteExportDir, err := filepath.Abs(exportDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve export directory %s: %w", exportDir, err)
+	}
+	if err := ensureSecureDirPath(string(filepath.Separator), absoluteExportDir); err != nil {
+		return "", err
 	}
 	return exportDir, nil
 }

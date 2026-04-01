@@ -350,6 +350,52 @@ func TestStopCommand_RejectsSymlinkExportDir(t *testing.T) {
 	assert.Contains(t, err.Error(), "must not be a symlink")
 }
 
+func TestStopCommand_RejectsSymlinkAncestorInExportDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	sourceDir := filepath.Join(tmpDir, "source")
+	stateFile := filepath.Join(tmpDir, "capture.json")
+	targetParent := filepath.Join(tmpDir, "target-parent")
+	symlinkParent := filepath.Join(tmpDir, "symlink-parent")
+	exportDir := filepath.Join(symlinkParent, "nested")
+
+	if !assert.NoError(t, os.MkdirAll(sourceDir, 0o755)) {
+		return
+	}
+	if !assert.NoError(t, os.MkdirAll(targetParent, 0o755)) {
+		return
+	}
+	if !assert.NoError(t, os.WriteFile(filepath.Join(sourceDir, "a.txt"), []byte("old"), 0o644)) {
+		return
+	}
+	if !assert.NoError(t, os.Symlink(targetParent, symlinkParent)) {
+		return
+	}
+
+	startCmd := GetStartCommand()
+	startCmd.SetArgs([]string{"--source", sourceDir, "--state-file", stateFile})
+	startCmd.SetOut(new(bytes.Buffer))
+	startCmd.SetErr(new(bytes.Buffer))
+	if !assert.NoError(t, startCmd.Execute()) {
+		return
+	}
+
+	if !assert.NoError(t, os.WriteFile(filepath.Join(sourceDir, "a.txt"), []byte("new"), 0o644)) {
+		return
+	}
+
+	stopCmd := GetStopCommand()
+	stopCmd.SetArgs([]string{"--source", sourceDir, "--state-file", stateFile, "--interactive", "--export", "--export-dir", exportDir})
+	stopCmd.SetIn(strings.NewReader("y\n"))
+	stopCmd.SetOut(new(bytes.Buffer))
+	stopCmd.SetErr(new(bytes.Buffer))
+
+	err := stopCmd.Execute()
+	if !assert.Error(t, err) {
+		return
+	}
+	assert.Contains(t, err.Error(), "refusing to use symlinked directory")
+}
+
 func TestStopCommand_RejectsNonDirectoryExportDir(t *testing.T) {
 	tmpDir := t.TempDir()
 	sourceDir := filepath.Join(tmpDir, "source")
