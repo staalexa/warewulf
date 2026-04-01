@@ -288,6 +288,9 @@ func exportSelected(sourceRoot, exportDir string, changes []overlaydiff.Change, 
 			if err := ensureSecureDirPath(exportDir, destPath); err != nil {
 				return exported, err
 			}
+			if err := os.Chmod(destPath, fs.FileMode(change.Source.Mode)); err != nil {
+				return exported, fmt.Errorf("failed to set mode for directory %s: %w", destPath, err)
+			}
 		case overlaydiff.EntrySymlink:
 			_ = osRemoveAll(destPath)
 			if err := osSymlink(change.Source.LinkTarget, destPath); err != nil {

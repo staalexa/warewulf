@@ -251,6 +251,52 @@ func TestStopCommand_FilterAndExportSelected(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestStopCommand_ExportDirectoryPreservesMode(t *testing.T) {
+	tmpDir := t.TempDir()
+	sourceDir := filepath.Join(tmpDir, "source")
+	stateFile := filepath.Join(tmpDir, "capture.json")
+	exportDir := filepath.Join(tmpDir, "export")
+	dirPath := filepath.Join(sourceDir, "dir")
+
+	if !assert.NoError(t, os.MkdirAll(dirPath, 0o755)) {
+		return
+	}
+
+	startCmd := GetStartCommand()
+	startCmd.SetArgs([]string{"--source", sourceDir, "--state-file", stateFile})
+	startCmd.SetOut(new(bytes.Buffer))
+	startCmd.SetErr(new(bytes.Buffer))
+	if !assert.NoError(t, startCmd.Execute()) {
+		return
+	}
+
+	if !assert.NoError(t, os.Chmod(dirPath, 0o3750)) {
+		return
+	}
+	sourceInfo, err := os.Stat(dirPath)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	stopCmd := GetStopCommand()
+	stopCmd.SetArgs([]string{"--source", sourceDir, "--state-file", stateFile, "--interactive", "--only", "mode-changed", "--path-prefix", "/dir", "--export", "--export-dir", exportDir})
+	stopCmd.SetIn(strings.NewReader("y\n"))
+	stopCmd.SetOut(new(bytes.Buffer))
+	stopCmd.SetErr(new(bytes.Buffer))
+
+	if !assert.NoError(t, stopCmd.Execute()) {
+		return
+	}
+
+	info, err := os.Stat(filepath.Join(exportDir, "dir"))
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	modeMask := os.ModePerm | os.ModeSetgid | os.ModeSticky
+	assert.Equal(t, sourceInfo.Mode()&modeMask, info.Mode()&modeMask)
+}
+
 func TestStopCommand_DefaultExportDirIsPrivateAndRandomized(t *testing.T) {
 	tmpDir := t.TempDir()
 	sourceDir := filepath.Join(tmpDir, "source")
