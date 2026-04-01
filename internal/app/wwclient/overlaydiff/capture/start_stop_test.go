@@ -182,7 +182,7 @@ func TestStopCommand_FilterAndExportSelected(t *testing.T) {
 	}
 
 	stopCmd := GetStopCommand()
-	stopCmd.SetArgs([]string{"--source", sourceDir, "--state-file", stateFile, "--interactive", "--only", "modified", "--path-prefix", "/a", "--export", "--export-dir", exportDir})
+	stopCmd.SetArgs([]string{"--source", sourceDir, "--state-file", stateFile, "--interactive", "--only", "modified", "--path-prefix", "/a.txt", "--export", "--export-dir", exportDir})
 	stopCmd.SetIn(strings.NewReader("y\n"))
 	stopCmd.SetOut(new(bytes.Buffer))
 	stopCmd.SetErr(new(bytes.Buffer))

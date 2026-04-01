@@ -64,7 +64,7 @@ func FilterChanges(changes []Change, options FilterOptions) []Change {
 		if len(prefixes) > 0 {
 			matches := false
 			for _, prefix := range prefixes {
-				if strings.HasPrefix(change.Path, prefix) {
+				if change.Path == prefix || strings.HasPrefix(change.Path, prefix+"/") {
 					matches = true
 					break
 				}

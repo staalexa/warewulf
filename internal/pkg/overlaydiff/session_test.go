@@ -33,8 +33,10 @@ func TestLoadSnapshot_BackwardCompatibleDecisions(t *testing.T) {
 
 func TestFilterChanges_ByTypeAndPrefix(t *testing.T) {
 	changes := []Change{
+		{Path: "/etc", Change: ChangeModified, Type: EntryDir},
 		{Path: "/etc/a", Change: ChangeAdded, Type: EntryFile},
 		{Path: "/etc/b", Change: ChangeModified, Type: EntryFile},
+		{Path: "/etc2/b", Change: ChangeModified, Type: EntryFile},
 		{Path: "/var/c", Change: ChangeModeChanged, Type: EntryFile},
 	}
 
@@ -43,10 +45,11 @@ func TestFilterChanges_ByTypeAndPrefix(t *testing.T) {
 		PathPrefix: []string{"/etc"},
 	})
 
-	if !assert.Len(t, filtered, 1) {
+	if !assert.Len(t, filtered, 2) {
 		return
 	}
-	assert.Equal(t, "/etc/b", filtered[0].Path)
+	assert.Equal(t, "/etc", filtered[0].Path)
+	assert.Equal(t, "/etc/b", filtered[1].Path)
 }
 
 func TestParseChangeTypes_InvalidValue(t *testing.T) {
