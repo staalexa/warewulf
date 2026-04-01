@@ -6,9 +6,13 @@ import "sort"
 type Decision string
 
 const (
-	DecisionUnset     Decision = "unset"
-	DecisionYes       Decision = "yes"
-	DecisionNo        Decision = "no"
+	// DecisionUnset indicates no explicit choice has been made yet.
+	DecisionUnset Decision = "unset"
+	// DecisionYes marks a path selected for export.
+	DecisionYes Decision = "yes"
+	// DecisionNo marks a path intentionally skipped.
+	DecisionNo Decision = "no"
+	// DecisionTemplated marks a path for template-based handling.
 	DecisionTemplated Decision = "templated"
 )
 
@@ -31,6 +35,7 @@ func SummarizeChanges(changes []Change) []ChangeSummary {
 	}
 
 	sort.Slice(result, func(i, j int) bool {
+		// Keep ordering stable for persistence and predictable rendering.
 		if result[i].Path == result[j].Path {
 			return result[i].Change < result[j].Change
 		}

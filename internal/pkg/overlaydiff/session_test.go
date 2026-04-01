@@ -9,6 +9,7 @@ import (
 )
 
 func TestLoadSnapshot_BackwardCompatibleDecisions(t *testing.T) {
+	// Legacy snapshots without decisions should still load with defaults.
 	tmpDir := t.TempDir()
 	stateFile := filepath.Join(tmpDir, "capture.json")
 
@@ -32,6 +33,7 @@ func TestLoadSnapshot_BackwardCompatibleDecisions(t *testing.T) {
 }
 
 func TestFilterChanges_ByTypeAndPrefix(t *testing.T) {
+	// Prefix filtering should respect path boundaries (/etc should not match /etc2).
 	changes := []Change{
 		{Path: "/etc", Change: ChangeModified, Type: EntryDir},
 		{Path: "/etc/a", Change: ChangeAdded, Type: EntryFile},
@@ -53,6 +55,7 @@ func TestFilterChanges_ByTypeAndPrefix(t *testing.T) {
 }
 
 func TestParseChangeTypes_InvalidValue(t *testing.T) {
+	// Unsupported --only values should return a descriptive validation error.
 	_, err := ParseChangeTypes([]string{"removed"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "expected added|modified|mode-changed")

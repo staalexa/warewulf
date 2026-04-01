@@ -27,6 +27,7 @@ func ParseChangeTypes(values []string) ([]ChangeType, error) {
 	return result, nil
 }
 
+// fmtInvalidChangeFilter wraps an invalid --only value in a typed error.
 func fmtInvalidChangeFilter(value string) error {
 	return &ErrInvalidFilter{Value: value}
 }
@@ -36,6 +37,7 @@ type ErrInvalidFilter struct {
 	Value string
 }
 
+// Error returns a user-facing message for invalid --only filter values.
 func (e *ErrInvalidFilter) Error() string {
 	return "invalid --only value \"" + e.Value + "\": expected added|modified|mode-changed"
 }
@@ -64,6 +66,7 @@ func FilterChanges(changes []Change, options FilterOptions) []Change {
 		if len(prefixes) > 0 {
 			matches := false
 			for _, prefix := range prefixes {
+				// Match exact path or children under that path, but not sibling prefixes.
 				if change.Path == prefix || strings.HasPrefix(change.Path, prefix+"/") {
 					matches = true
 					break
