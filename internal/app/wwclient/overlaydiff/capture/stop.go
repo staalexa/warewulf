@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/warewulf/warewulf/internal/pkg/overlaydiff"
@@ -45,7 +44,7 @@ func GetStopCommand() *cobra.Command {
 	cmd.Flags().StringArrayVar(&stopOnly, "only", nil, "Only include change class (repeatable): added|modified|mode-changed")
 	cmd.Flags().StringArrayVar(&stopPathPrefix, "path-prefix", nil, "Only include path prefix (repeatable, example: /etc)")
 	cmd.Flags().BoolVar(&stopExport, "export", false, "Copy selected files to an export directory")
-	cmd.Flags().StringVar(&stopExportDir, "export-dir", "", "Export destination directory (default: /tmp/wwclient-overlaydiff/<timestamp>)")
+	cmd.Flags().StringVar(&stopExportDir, "export-dir", "", "Export destination directory (default: randomized /tmp/wwclient-overlaydiff-*)")
 
 	_ = cmd.MarkFlagRequired("source")
 	return cmd
@@ -131,9 +130,9 @@ func runStop(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintf(textOut, "Decision summary: selected=%d skipped=%d templated=%d unset=%d\n", selected, skipped, templated, unset)
 
 	if stopExport || strings.TrimSpace(stopExportDir) != "" {
-		exportDir := strings.TrimSpace(stopExportDir)
-		if exportDir == "" {
-			exportDir = defaultExportDir()
+		exportDir, err := prepareExportDir(strings.TrimSpace(stopExportDir))
+		if err != nil {
+			return err
 		}
 
 		exported, err := exportSelected(sourceAbs, exportDir, changes, snapshot.Decisions)
@@ -214,8 +213,33 @@ func summarizeDecisions(changes []overlaydiff.Change, decisions map[string]overl
 	return
 }
 
-func defaultExportDir() string {
-	return filepath.Join("/tmp", "wwclient-overlaydiff", time.Now().UTC().Format("20060102-150405"))
+func prepareExportDir(custom string) (string, error) {
+	if custom == "" {
+		dir, err := os.MkdirTemp("/tmp", "wwclient-overlaydiff-")
+		if err != nil {
+			return "", fmt.Errorf("failed to create export directory in /tmp: %w", err)
+		}
+		return dir, nil
+	}
+
+	exportDir := filepath.Clean(custom)
+	info, err := os.Lstat(exportDir)
+	if err == nil {
+		if info.Mode()&os.ModeSymlink != 0 {
+			return "", fmt.Errorf("export directory must not be a symlink: %s", exportDir)
+		}
+		if !info.IsDir() {
+			return "", fmt.Errorf("export directory is not a directory: %s", exportDir)
+		}
+		return exportDir, nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return "", fmt.Errorf("failed to inspect export directory %s: %w", exportDir, err)
+	}
+	if err := os.MkdirAll(exportDir, 0o700); err != nil {
+		return "", fmt.Errorf("failed to create export directory %s: %w", exportDir, err)
+	}
+	return exportDir, nil
 }
 
 func exportSelected(sourceRoot, exportDir string, changes []overlaydiff.Change, decisions map[string]overlaydiff.Decision) (int, error) {
@@ -231,14 +255,23 @@ func exportSelected(sourceRoot, exportDir string, changes []overlaydiff.Change, 
 		relPath := strings.TrimPrefix(change.Path, "/")
 		sourcePath := filepath.Join(sourceRoot, relPath)
 		destPath := filepath.Join(exportDir, relPath)
-
-		if err := osMkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		if err := ensureWithinExportRoot(exportDir, destPath); err != nil {
 			return exported, err
+		}
+
+		if err := ensureSecureDirPath(exportDir, filepath.Dir(destPath)); err != nil {
+			return exported, err
+		}
+
+		if info, err := os.Lstat(destPath); err == nil && info.Mode()&os.ModeSymlink != 0 {
+			return exported, fmt.Errorf("refusing to write through symlinked destination: %s", destPath)
+		} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return exported, fmt.Errorf("failed to inspect export destination %s: %w", destPath, err)
 		}
 
 		switch change.Source.Type {
 		case overlaydiff.EntryDir:
-			if err := osMkdirAll(destPath, fs.FileMode(change.Source.Mode)); err != nil {
+			if err := ensureSecureDirPath(exportDir, destPath); err != nil {
 				return exported, err
 			}
 		case overlaydiff.EntrySymlink:
@@ -255,6 +288,59 @@ func exportSelected(sourceRoot, exportDir string, changes []overlaydiff.Change, 
 	}
 
 	return exported, nil
+}
+
+func ensureWithinExportRoot(root string, target string) error {
+	rel, err := filepath.Rel(root, target)
+	if err != nil {
+		return fmt.Errorf("failed to resolve export path: %w", err)
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("refusing to export outside target root: %s", target)
+	}
+	return nil
+}
+
+func ensureSecureDirPath(root string, target string) error {
+	if err := ensureWithinExportRoot(root, target); err != nil {
+		return err
+	}
+
+	rel, err := filepath.Rel(root, target)
+	if err != nil {
+		return fmt.Errorf("failed to resolve export parent path: %w", err)
+	}
+
+	current := root
+	if rel == "." {
+		return nil
+	}
+
+	parts := strings.Split(rel, string(filepath.Separator))
+	for _, part := range parts {
+		if part == "" || part == "." {
+			continue
+		}
+		current = filepath.Join(current, part)
+		info, err := os.Lstat(current)
+		if err == nil {
+			if info.Mode()&os.ModeSymlink != 0 {
+				return fmt.Errorf("refusing to use symlinked directory: %s", current)
+			}
+			if !info.IsDir() {
+				return fmt.Errorf("export path is not a directory: %s", current)
+			}
+			continue
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("failed to inspect export directory %s: %w", current, err)
+		}
+		if err := osMkdirAll(current, 0o700); err != nil {
+			return fmt.Errorf("failed to create export directory %s: %w", current, err)
+		}
+	}
+
+	return nil
 }
 
 var (

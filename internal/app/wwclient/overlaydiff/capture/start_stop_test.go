@@ -197,6 +197,146 @@ func TestStopCommand_FilterAndExportSelected(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestStopCommand_DefaultExportDirIsPrivateAndRandomized(t *testing.T) {
+	tmpDir := t.TempDir()
+	sourceDir := filepath.Join(tmpDir, "source")
+	stateFile := filepath.Join(tmpDir, "capture.json")
+
+	if !assert.NoError(t, os.MkdirAll(sourceDir, 0o755)) {
+		return
+	}
+	if !assert.NoError(t, os.WriteFile(filepath.Join(sourceDir, "a.txt"), []byte("old"), 0o644)) {
+		return
+	}
+
+	startCmd := GetStartCommand()
+	startCmd.SetArgs([]string{"--source", sourceDir, "--state-file", stateFile})
+	startCmd.SetOut(new(bytes.Buffer))
+	startCmd.SetErr(new(bytes.Buffer))
+	if !assert.NoError(t, startCmd.Execute()) {
+		return
+	}
+
+	if !assert.NoError(t, os.WriteFile(filepath.Join(sourceDir, "a.txt"), []byte("new"), 0o644)) {
+		return
+	}
+
+	stopCmd := GetStopCommand()
+	stopCmd.SetArgs([]string{"--source", sourceDir, "--state-file", stateFile, "--interactive", "--export"})
+	stopCmd.SetIn(strings.NewReader("y\n"))
+	stopOut := new(bytes.Buffer)
+	stopCmd.SetOut(stopOut)
+	stopCmd.SetErr(new(bytes.Buffer))
+
+	if !assert.NoError(t, stopCmd.Execute()) {
+		return
+	}
+
+	output := stopOut.String()
+	prefix := "Exported 1 selected entries to "
+	idx := strings.Index(output, prefix)
+	if !assert.NotEqual(t, -1, idx) {
+		return
+	}
+	line := output[idx+len(prefix):]
+	line = strings.SplitN(line, "\n", 2)[0]
+	exportDir := strings.TrimSpace(line)
+
+	assert.True(t, strings.HasPrefix(exportDir, "/tmp/wwclient-overlaydiff-"))
+
+	info, err := os.Stat(exportDir)
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Equal(t, os.FileMode(0o700), info.Mode().Perm())
+}
+
+func TestStopCommand_RejectsSymlinkExportDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	sourceDir := filepath.Join(tmpDir, "source")
+	stateFile := filepath.Join(tmpDir, "capture.json")
+	targetDir := filepath.Join(tmpDir, "target")
+	symlinkDir := filepath.Join(tmpDir, "symlink")
+
+	if !assert.NoError(t, os.MkdirAll(sourceDir, 0o755)) {
+		return
+	}
+	if !assert.NoError(t, os.MkdirAll(targetDir, 0o755)) {
+		return
+	}
+	if !assert.NoError(t, os.WriteFile(filepath.Join(sourceDir, "a.txt"), []byte("old"), 0o644)) {
+		return
+	}
+	if !assert.NoError(t, os.Symlink(targetDir, symlinkDir)) {
+		return
+	}
+
+	startCmd := GetStartCommand()
+	startCmd.SetArgs([]string{"--source", sourceDir, "--state-file", stateFile})
+	startCmd.SetOut(new(bytes.Buffer))
+	startCmd.SetErr(new(bytes.Buffer))
+	if !assert.NoError(t, startCmd.Execute()) {
+		return
+	}
+
+	if !assert.NoError(t, os.WriteFile(filepath.Join(sourceDir, "a.txt"), []byte("new"), 0o644)) {
+		return
+	}
+
+	stopCmd := GetStopCommand()
+	stopCmd.SetArgs([]string{"--source", sourceDir, "--state-file", stateFile, "--interactive", "--export", "--export-dir", symlinkDir})
+	stopCmd.SetIn(strings.NewReader("y\n"))
+	stopCmd.SetOut(new(bytes.Buffer))
+	stopCmd.SetErr(new(bytes.Buffer))
+
+	err := stopCmd.Execute()
+	if !assert.Error(t, err) {
+		return
+	}
+	assert.Contains(t, err.Error(), "must not be a symlink")
+}
+
+func TestStopCommand_RejectsNonDirectoryExportDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	sourceDir := filepath.Join(tmpDir, "source")
+	stateFile := filepath.Join(tmpDir, "capture.json")
+	exportFile := filepath.Join(tmpDir, "export-file")
+
+	if !assert.NoError(t, os.MkdirAll(sourceDir, 0o755)) {
+		return
+	}
+	if !assert.NoError(t, os.WriteFile(filepath.Join(sourceDir, "a.txt"), []byte("old"), 0o644)) {
+		return
+	}
+	if !assert.NoError(t, os.WriteFile(exportFile, []byte("x"), 0o600)) {
+		return
+	}
+
+	startCmd := GetStartCommand()
+	startCmd.SetArgs([]string{"--source", sourceDir, "--state-file", stateFile})
+	startCmd.SetOut(new(bytes.Buffer))
+	startCmd.SetErr(new(bytes.Buffer))
+	if !assert.NoError(t, startCmd.Execute()) {
+		return
+	}
+
+	if !assert.NoError(t, os.WriteFile(filepath.Join(sourceDir, "a.txt"), []byte("new"), 0o644)) {
+		return
+	}
+
+	stopCmd := GetStopCommand()
+	stopCmd.SetArgs([]string{"--source", sourceDir, "--state-file", stateFile, "--interactive", "--export", "--export-dir", exportFile})
+	stopCmd.SetIn(strings.NewReader("y\n"))
+	stopCmd.SetOut(new(bytes.Buffer))
+	stopCmd.SetErr(new(bytes.Buffer))
+
+	err := stopCmd.Execute()
+	if !assert.Error(t, err) {
+		return
+	}
+	assert.Contains(t, err.Error(), "not a directory")
+}
+
 func TestStopCommand_MissingSnapshot(t *testing.T) {
 	tmpDir := t.TempDir()
 	sourceDir := filepath.Join(tmpDir, "source")
