@@ -151,10 +151,8 @@ func runInteractiveSelection(in io.Reader, out io.Writer, changes []overlaydiff.
 	reader := bufio.NewReader(in)
 
 	for idx, change := range changes {
-		currentDecision := snapshot.Decisions[change.Path]
-		if currentDecision == "" {
-			currentDecision = overlaydiff.DecisionUnset
-		}
+		currentDecision := normalizeDecision(snapshot.Decisions[change.Path])
+		snapshot.Decisions[change.Path] = currentDecision
 
 		if currentDecision != overlaydiff.DecisionUnset {
 			continue
@@ -199,7 +197,7 @@ func runInteractiveSelection(in io.Reader, out io.Writer, changes []overlaydiff.
 
 func summarizeDecisions(changes []overlaydiff.Change, decisions map[string]overlaydiff.Decision) (selected int, skipped int, templated int, unset int) {
 	for _, change := range changes {
-		switch decisions[change.Path] {
+		switch normalizeDecision(decisions[change.Path]) {
 		case overlaydiff.DecisionYes:
 			selected++
 		case overlaydiff.DecisionNo:
@@ -211,6 +209,17 @@ func summarizeDecisions(changes []overlaydiff.Change, decisions map[string]overl
 		}
 	}
 	return
+}
+
+func normalizeDecision(value overlaydiff.Decision) overlaydiff.Decision {
+	switch value {
+	case "", overlaydiff.DecisionUnset:
+		return overlaydiff.DecisionUnset
+	case overlaydiff.DecisionYes, overlaydiff.DecisionNo, overlaydiff.DecisionTemplated:
+		return value
+	default:
+		return overlaydiff.DecisionUnset
+	}
 }
 
 func prepareExportDir(custom string) (string, error) {
