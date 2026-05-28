@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/warewulf/warewulf/internal/pkg/node"
 	"github.com/warewulf/warewulf/internal/pkg/overlay"
+	"github.com/warewulf/warewulf/internal/pkg/util"
 )
 
 type blameLine struct {
@@ -73,6 +74,10 @@ func printBlameLines(cmd *cobra.Command, lines []blameLine) error {
 func collectBlameLines(nodeData node.Node, allNodes []node.Node, overlayNames []string, context string, includeDirs bool, prefix string) ([]blameLine, error) {
 	var lines []blameLine
 	for _, overlayName := range overlayNames {
+		if !util.ValidString("^[a-zA-Z0-9-._:]+$", overlayName) {
+			return nil, fmt.Errorf("overlay names contains illegal characters: %v", overlayNames)
+		}
+
 		overlayRoot, err := overlay.Get(overlayName)
 		if err != nil {
 			return nil, fmt.Errorf("could not get overlay %s: %w", overlayName, err)
@@ -113,6 +118,7 @@ func collectOverlayLines(nodeData node.Node, allNodes []node.Node, overlayRoot o
 
 		deployedPath := deployedOverlayPath(relPath)
 		if !info.IsDir() && filepath.Ext(walkPath) == ".ww" {
+			deployedPath = strings.TrimSuffix(deployedPath, ".ww")
 			paths, err := overlay.TemplateOutputPaths(walkPath, deployedPath, overlayName, nodeData, allNodes)
 			if err != nil {
 				return err
@@ -156,8 +162,7 @@ func isBlameFile(info os.FileInfo) bool {
 
 func deployedOverlayPath(relPath string) string {
 	deployedPath := "/" + filepath.ToSlash(relPath)
-	deployedPath = path.Clean(deployedPath)
-	return strings.TrimSuffix(deployedPath, ".ww")
+	return path.Clean(deployedPath)
 }
 
 func normalizePathPrefix(prefix string) string {

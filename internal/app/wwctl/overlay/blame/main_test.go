@@ -67,6 +67,19 @@ func TestOverlayBlameShowModeChangesIncludesDirectories(t *testing.T) {
 `, stdout)
 }
 
+func TestOverlayBlameShowModeChangesKeepsWWDirectorySuffix(t *testing.T) {
+	env := testenv.New(t)
+	defer env.RemoveAll()
+
+	env.WriteFile("etc/warewulf/nodes.conf", testNodesConf)
+	createTestOverlayRoots(env)
+	env.MkdirAll("var/lib/warewulf/overlays/profile-system/rootfs/foo.ww")
+
+	stdout, err := executeCommand("--show-mode-changes", "node1")
+	assert.NoError(t, err)
+	assert.Equal(t, "/foo.ww  profile-system  [system overlay]\n", stdout)
+}
+
 func TestOverlayBlamePathPrefix(t *testing.T) {
 	env := testenv.New(t)
 	defer env.RemoveAll()
@@ -110,6 +123,22 @@ B
 func TestOverlayBlameRequiresNode(t *testing.T) {
 	_, err := executeCommand()
 	assert.Error(t, err)
+}
+
+func TestOverlayBlameRejectsInvalidOverlayName(t *testing.T) {
+	env := testenv.New(t)
+	defer env.RemoveAll()
+
+	env.WriteFile("etc/warewulf/nodes.conf", `nodeprofiles:
+  default: {}
+nodes:
+  node1:
+    system overlay:
+      - ../outside
+`)
+
+	_, err := executeCommand("node1")
+	assert.ErrorContains(t, err, "overlay names contains illegal characters")
 }
 
 func executeCommand(args ...string) (string, error) {
