@@ -82,6 +82,31 @@ func TestOverlayBlamePathPrefix(t *testing.T) {
 	assert.Equal(t, "/etc/app.conf  profile-system  [system overlay]\n", stdout)
 }
 
+func TestOverlayBlameTemplateGeneratedPaths(t *testing.T) {
+	env := testenv.New(t)
+	defer env.RemoveAll()
+
+	env.WriteFile("etc/warewulf/nodes.conf", testNodesConf)
+	createTestOverlayRoots(env)
+	env.WriteFile("var/lib/warewulf/overlays/profile-system/rootfs/etc/source.conf.ww", `{{ file "multi-a.conf" }}
+A
+{{ file "multi-b.conf" }}
+B
+`)
+	env.WriteFile("var/lib/warewulf/overlays/profile-system/rootfs/etc/link-from-template.ww", `{{ softlink "/target" }}
+`)
+	env.WriteFile("var/lib/warewulf/overlays/profile-system/rootfs/etc/abort.conf.ww", `{{ abort }}
+`)
+
+	stdout, err := executeCommand("node1")
+	assert.NoError(t, err)
+	assert.Contains(t, stdout, "/etc/multi-a.conf")
+	assert.Contains(t, stdout, "/etc/multi-b.conf")
+	assert.Contains(t, stdout, "/etc/link-from-template")
+	assert.NotContains(t, stdout, "/etc/source.conf")
+	assert.NotContains(t, stdout, "/etc/abort.conf")
+}
+
 func TestOverlayBlameRequiresNode(t *testing.T) {
 	_, err := executeCommand()
 	assert.Error(t, err)

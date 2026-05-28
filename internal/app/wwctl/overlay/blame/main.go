@@ -30,17 +30,21 @@ func CobraRunE(vars *variables) func(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("could not get node %s: %w", args[0], err)
 		}
+		allNodes, err := nodeDB.FindAllNodes()
+		if err != nil {
+			return fmt.Errorf("could not get node list: %w", err)
+		}
 
 		prefix := normalizePathPrefix(vars.PathPrefix)
 		var lines []blameLine
 
-		contextLines, err := collectBlameLines(nodeData.SystemOverlay, "system", vars.ShowModeChanges, prefix)
+		contextLines, err := collectBlameLines(nodeData, allNodes, nodeData.SystemOverlay, "system", vars.ShowModeChanges, prefix)
 		if err != nil {
 			return err
 		}
 		lines = append(lines, contextLines...)
 
-		contextLines, err = collectBlameLines(nodeData.RuntimeOverlay, "runtime", vars.ShowModeChanges, prefix)
+		contextLines, err = collectBlameLines(nodeData, allNodes, nodeData.RuntimeOverlay, "runtime", vars.ShowModeChanges, prefix)
 		if err != nil {
 			return err
 		}
@@ -66,7 +70,7 @@ func printBlameLines(cmd *cobra.Command, lines []blameLine) error {
 	return nil
 }
 
-func collectBlameLines(overlayNames []string, context string, includeDirs bool, prefix string) ([]blameLine, error) {
+func collectBlameLines(nodeData node.Node, allNodes []node.Node, overlayNames []string, context string, includeDirs bool, prefix string) ([]blameLine, error) {
 	var lines []blameLine
 	for _, overlayName := range overlayNames {
 		overlayRoot, err := overlay.Get(overlayName)
@@ -74,7 +78,7 @@ func collectBlameLines(overlayNames []string, context string, includeDirs bool, 
 			return nil, fmt.Errorf("could not get overlay %s: %w", overlayName, err)
 		}
 
-		overlayLines, err := collectOverlayLines(overlayRoot, overlayName, context, includeDirs, prefix)
+		overlayLines, err := collectOverlayLines(nodeData, allNodes, overlayRoot, overlayName, context, includeDirs, prefix)
 		if err != nil {
 			return nil, err
 		}
@@ -83,7 +87,7 @@ func collectBlameLines(overlayNames []string, context string, includeDirs bool, 
 	return lines, nil
 }
 
-func collectOverlayLines(overlayRoot overlay.Overlay, overlayName string, context string, includeDirs bool, prefix string) ([]blameLine, error) {
+func collectOverlayLines(nodeData node.Node, allNodes []node.Node, overlayRoot overlay.Overlay, overlayName string, context string, includeDirs bool, prefix string) ([]blameLine, error) {
 	var lines []blameLine
 	rootfs := overlayRoot.Rootfs()
 	err := filepath.Walk(rootfs, func(walkPath string, info os.FileInfo, err error) error {
@@ -108,6 +112,23 @@ func collectOverlayLines(overlayRoot overlay.Overlay, overlayName string, contex
 		}
 
 		deployedPath := deployedOverlayPath(relPath)
+		if filepath.Ext(walkPath) == ".ww" {
+			paths, err := overlay.TemplateOutputPaths(walkPath, deployedPath, overlayName, nodeData, allNodes)
+			if err != nil {
+				return err
+			}
+			for _, templatePath := range paths {
+				if !pathMatchesPrefix(templatePath, prefix) {
+					continue
+				}
+				lines = append(lines, blameLine{
+					Path:    templatePath,
+					Overlay: overlayName,
+					Context: context,
+				})
+			}
+			return nil
+		}
 		if !pathMatchesPrefix(deployedPath, prefix) {
 			return nil
 		}
