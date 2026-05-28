@@ -112,7 +112,7 @@ func collectOverlayLines(nodeData node.Node, allNodes []node.Node, overlayRoot o
 		}
 
 		deployedPath := deployedOverlayPath(relPath)
-		if filepath.Ext(walkPath) == ".ww" {
+		if !info.IsDir() && filepath.Ext(walkPath) == ".ww" {
 			paths, err := overlay.TemplateOutputPaths(walkPath, deployedPath, overlayName, nodeData, allNodes)
 			if err != nil {
 				return err

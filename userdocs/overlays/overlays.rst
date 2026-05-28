@@ -26,7 +26,7 @@ within the overlays with ``wwctl overlay list --all``.
    fstab         etc/fstab.ww  false
 
 Tracing Overlay File Sources
-============================
+----------------------------
 
 Use ``wwctl overlay blame`` to show which configured overlays contribute files
 to a node. This is useful when a node receives the same path from multiple
@@ -36,9 +36,9 @@ overlay owns it.
 .. code-block:: console
 
    # wwctl overlay blame n1
-   /etc/hosts                         hosts                [runtime overlay]
    /etc/issue                         issue                [system overlay]
    /etc/systemd/network/10-ww4        systemd.netname      [system overlay]
+   /etc/hosts                         hosts                [runtime overlay]
 
 The command uses the node's merged configuration, so overlays inherited from
 profiles are included. System overlays are listed first, followed by runtime
