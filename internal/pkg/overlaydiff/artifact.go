@@ -11,8 +11,12 @@ import (
 	"time"
 )
 
-// ArtifactManifestFileName is the JSON manifest stored at artifact root.
-const ArtifactManifestFileName = "overlaydiff-manifest.json"
+const (
+	// ArtifactManifestFileName is the JSON manifest stored at artifact root.
+	ArtifactManifestFileName = "overlaydiff-manifest.json"
+	// ArtifactSchemaVersion is the supported artifact manifest schema.
+	ArtifactSchemaVersion = "v1"
+)
 
 var overlayNamePattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
@@ -61,7 +65,7 @@ func BuildArtifactManifest(overlayName, sourceRoot, nodeSource string, selectedP
 	sort.Strings(normalized)
 
 	return ArtifactManifest{
-		SchemaVersion: "v1",
+		SchemaVersion: ArtifactSchemaVersion,
 		OverlayName:   strings.TrimSpace(overlayName),
 		CreatedAt:     time.Now().UTC(),
 		SourceRoot:    sourceRoot,
@@ -117,6 +121,9 @@ func ValidateArtifact(root string) error {
 	manifest, err := LoadArtifactManifest(manifestPath)
 	if err != nil {
 		return err
+	}
+	if manifest.SchemaVersion != ArtifactSchemaVersion {
+		return fmt.Errorf("unsupported artifact schema version %q: expected %s", manifest.SchemaVersion, ArtifactSchemaVersion)
 	}
 
 	if err := ValidateOverlayName(manifest.OverlayName); err != nil {
