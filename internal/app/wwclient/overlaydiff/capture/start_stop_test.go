@@ -149,7 +149,7 @@ func TestStopCommand_DefaultsToInteractive(t *testing.T) {
 		return
 	}
 
-	assert.Contains(t, stopOut.String(), "-> (y)es, (n)o, (t)emplated, (e)xit")
+	assert.Contains(t, stopOut.String(), "-> (y)es, (n)o, (e)xit")
 }
 
 func TestStopCommand_InteractivePersistsDecision(t *testing.T) {

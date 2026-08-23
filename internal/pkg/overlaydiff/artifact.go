@@ -18,10 +18,9 @@ var overlayNamePattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
 // DecisionSummary captures persisted counts for operator decisions.
 type DecisionSummary struct {
-	Selected  int `json:"selected"`
-	Skipped   int `json:"skipped"`
-	Templated int `json:"templated"`
-	Unset     int `json:"unset"`
+	Selected int `json:"selected"`
+	Skipped  int `json:"skipped"`
+	Unset    int `json:"unset"`
 }
 
 // ArtifactManifest stores metadata for exported overlaydiff artifacts.
